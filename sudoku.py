@@ -42,8 +42,7 @@ class SudokuSolver:
         for i in range(9):
             for k in range(9):
                 # at least one occurrence of each value in the row
-                self.solver.add(Or(self.variables[i][j][k] for j in range(9)))
-                # at most one occurenence of each value in the row
+                self.solver.add(Or([self.variables[i][j][k] for j in range(9)]))                # at most one occurenence of each value in the row
                 for j in range(9):
                     for l in range(j+1,9):
                         self.solver.add(Not(And(self.variables[i][j][k], self.variables[i][l][k])))
@@ -100,8 +99,27 @@ class SudokuSolver:
             where `var` is the Z3 variable whose value you want to retrieve.
         """
         # Your code here
-                   
-  
+        
+        answer = []
+        for _ in range(9):
+            row = []
+            for _ in range(9):
+                row.append(0)
+            answer.append(row)
+        
+        # Iterate over each cell in the grid
+        for i in range(9):
+            for j in range(9):
+                # check each possible value for the cell
+                for k in range(9):
+                    # get the variable corresponding to cell (i, j) being k+1
+                    var = self.variables[i][j][k]
+                    # If the variable is True in the model, assign k+1 to the cell
+                    if model.evaluate(var):
+                        answer[i][j] = k + 1
+                        break  # Move to the next cell after finding the value
+        return answer           
+    
     
     def solve(self):
         """
