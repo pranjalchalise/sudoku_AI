@@ -78,8 +78,13 @@ class SudokuSolver:
         Encode the initial puzzle into the solver.
         """
         # Your code here
+        for i in range(9):#iterating over each row
+            for j in range(9): #iterating over each column
+                value=self.puzzle[i][j]
+                if value!=0: #if not empty
+                    k=value-1 # getting the actual index
+                    self.solver.add(self.variables[i][j][k])
         
-        pass
 
     def extract_solution(self, model):
         """
