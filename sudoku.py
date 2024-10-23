@@ -10,19 +10,13 @@ class SudokuSolver:
         Set self.variables as a 3D list containing the Z3 variables. 
         self.variables[i][j][k] is true if cell i,j contains the value k+1.
         """
-        self.variables=[]
-        
-        for i in range(9):
-            row=[]
-            for j in range(9):
-                cell=[]
-                for k in range(9):
-                    var_name = "cell_{}_{}_{}".format(i, j, k)
-                    var=Bool(var_name)
-                    cell.append(var)
-                row.append(cell)
-            self.variables.append(row)
-
+        self.variables = [
+        [ [Bool(f"cell_{i}_{j}_{k+1}") for k in range(9)]
+            for j in range(9)
+        ]
+        for i in range(9)
+    ]
+     
 
     def encode_rules(self):
         """
@@ -34,13 +28,57 @@ class SudokuSolver:
         4. Each 3x3 subgrid must contain each value exactly once.
         """
         # Your code here
-        pass
+        # 1. Each cell must contain exactly one value between 1 and 9.
+        for i in range(9):
+            for j in range(9):
+                # at least one value in each cell
+                self.solver.add(Or(self.variables[i][j]))
+                # at most one value in each cell
+                for k in range(9):
+                    for l in range(k + 1, 9):
+                        self.solver.add(Not(And(self.variables[i][j][k], self.variables[i][j][l])))
 
+        # Each row must contain each value exactly once.
+        for i in range(9):
+            for k in range(9):
+                # at least one occurrence of each value in the row
+                self.solver.add(Or(self.variables[i][j][k] for j in range(9)))
+                # at most one occurenence of each value in the row
+                for j in range(9):
+                    for l in range(j+1,9):
+                        self.solver.add(Not(And(self.variables[i][j][k], self.variables[i][l][k])))
+        # 3. Each column must contain each value exactly once.
+        for j in range(9):
+            for k in range(9):
+                # at least one occurrence of each value in the column
+                self.solver.add(Or([self.variables[i][j][k] for i in range(9)]))
+                # at most one occurrence of each value in the column
+                for i in range(9):
+                    for l in range(i + 1, 9):
+                        self.solver.add(Not(And(self.variables[i][j][k], self.variables[l][j][k])))
+
+        # 4. Each 3x3 subgrid must contain each value exactly once.
+        for block_i in range(3):
+            for block_j in range(3):
+                for k in range(9):
+                    block_cells = []
+                    for i in range(3):
+                        for j in range(3):
+                            block_cells.append(self.variables[3 * block_i + i][3 * block_j + j][k])
+                    # at least one occurrence of each value in the subgrid
+                    self.solver.add(Or(block_cells))
+                    # at most one occurrence of each value in the subgrid
+                    for x1 in range(9):
+                        for x2 in range(x1 + 1, 9):
+                            self.solver.add(Not(And(block_cells[x1], block_cells[x2])))
+
+        
     def encode_puzzle(self):
         """
         Encode the initial puzzle into the solver.
         """
         # Your code here
+        
         pass
 
     def extract_solution(self, model):
@@ -57,7 +95,8 @@ class SudokuSolver:
             where `var` is the Z3 variable whose value you want to retrieve.
         """
         # Your code here
-        pass
+                   
+  
     
     def solve(self):
         """
