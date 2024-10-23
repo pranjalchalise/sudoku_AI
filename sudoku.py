@@ -10,8 +10,19 @@ class SudokuSolver:
         Set self.variables as a 3D list containing the Z3 variables. 
         self.variables[i][j][k] is true if cell i,j contains the value k+1.
         """
-        # Your code here
-        pass
+        self.variables=[]
+        
+        for i in range(9):
+            row=[]
+            for j in range(9):
+                cell=[]
+                for k in range(9):
+                    var_name = "cell_{}_{}_{}".format(i, j, k)
+                    var=Bool(var_name)
+                    cell.append(var)
+                row.append(cell)
+            self.variables.append(row)
+
 
     def encode_rules(self):
         """
