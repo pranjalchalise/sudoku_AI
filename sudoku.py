@@ -1,7 +1,5 @@
-from z3 import Solver, Bool, And, Or, Not, Implies, sat, unsat
 import numpy as np
-
-n = 9
+from z3.z3 import Solver, Or, Bool, Not, And, sat
 
 
 class SudokuSolver:
@@ -15,10 +13,10 @@ class SudokuSolver:
         Set self.variables as a 3D list containing the Z3 variables. 
         self.variables[i][j][k] is true if cell i,j contains the value k+1.
         """
-        self.variables = np.empty((n, n, n), dtype=object)  # initialize the 3D list
-        for i in range(n):  # iterate over rows
-            for j in range(n):  # iterate over columns
-                for k in range(n):  # iterate over the list possible assignments for each cell
+        self.variables = np.empty((9, 9, 9), dtype=object)  # initialize the 3D list
+        for i in range(9):  # iterate over rows
+            for j in range(9):  # iterate over columns
+                for k in range(9):  # iterate over the list possible assignments for each cell
                     self.variables[i][j][k] = Bool(f"b{i}{j}{k + 1}")  # initialize the boolean variables
 
     def encode_rules(self):
@@ -35,28 +33,28 @@ class SudokuSolver:
         """
         Logic for each cell having exactly one value assigned
         """
-        for i in range(n):
-            for j in range(n):
+        for i in range(9):
+            for j in range(9):
                 self.solver.add(
-                    Or(*[self.variables[i][j][k] for k in range(n)]))  # ensure that each cell has at least one
+                    Or(*[self.variables[i][j][k] for k in range(9)]))  # ensure that each cell has at least one
                 # number assigned
 
-        for i in range(n):
-            for j in range(n):
-                for k in range(n):
-                    for l in range(n)[k + 1:]:
+        for i in range(9):
+            for j in range(9):
+                for k in range(9):
+                    for l in range(9)[k + 1:]:
                         self.solver.add(Not(And(*[self.variables[i][j][k], self.variables[i][j][l]])))  # make sure
                         # that a cell does not get assigned more than one value
 
         """
         Logic for each row containing each value exactly once
         """
-        for k in range(n):
-            for i in range(n):
+        for k in range(9):
+            for i in range(9):
                 self.solver.add(Or(*[self.variables[i][j][k] for j in
-                                     range(n)]))  # make sure each row that each row has each value at least once
-                for j in range(n):
-                    for l in range(n)[j + 1:]:
+                                     range(9)]))  # make sure each row that each row has each value at least once
+                for j in range(9):
+                    for l in range(9)[j + 1:]:
                         self.solver.add(
                             Not(And(*[self.variables[i][j][k], self.variables[i][l][k]])))  # make sure each
                         # row does not have any value more than once
@@ -64,12 +62,12 @@ class SudokuSolver:
         """
         Logic for each column containing each value exactly once
         """
-        for k in range(n):
-            for i in range(n):
+        for k in range(9):
+            for i in range(9):
                 self.solver.add(Or(*[self.variables[j][i][k] for j in
-                                     range(n)]))  # make sure each column that each row has each value at least once
-                for j in range(n):
-                    for l in range(n)[j + 1:]:
+                                     range(9)]))  # make sure each column that each row has each value at least once
+                for j in range(9):
+                    for l in range(9)[j + 1:]:
                         self.solver.add(
                             Not(And(*[self.variables[j][i][k], self.variables[l][i][k]])))  # make sure each
                         # column does not have any value more than once
@@ -77,9 +75,9 @@ class SudokuSolver:
         """
         Logic for each 3x3 subgrid containing each value exactly once
          """
-        for k in range(n):
-            for i in range(0, n, 3):  # iterate over the top left corner cells of each subgrid
-                for j in range(0, n, 3):
+        for k in range(9):
+            for i in range(0, 9, 3):  # iterate over the top left corner cells of each subgrid
+                for j in range(0, 9, 3):
                     self.solver.add(Or(*[self.variables[a][b][k]  # ensure each subgrid has each number at least once
                                          for a in range(i, i + 3)
                                          for b in range(j, j + 3)]))
@@ -96,11 +94,11 @@ class SudokuSolver:
         Encode the initial puzzle into the solver.
         """
         # Your code here
-        for i in range(n):  # iterate over the puzzle
-            for j in range(n):
+        for i in range(9):  # iterate over the puzzle
+            for j in range(9):
                 if (self.puzzle[i][j] != 0):  # if not empty
-                    self.variables[i][j][self.puzzle[i][
-                                             j] - 1] = True  # assign true to the corresponding index for each value for each cell
+                    self.solver.add(self.variables[i][j][self.puzzle[i][
+                                                             j] - 1] == True)  # assign true to the corresponding index for each value for each cell
 
     def extract_solution(self, model):
         """
@@ -116,13 +114,34 @@ class SudokuSolver:
             where `var` is the Z3 variable whose value you want to retrieve.
         """
         # Your code here
-        answer = np.empty(n, n)  # initialize 9x9 grid that will represent the answer
-        for i in range(n):  # iterate over the grid
-            for j in range(n):
-                answer[i][j] = model.evaluate(self.variables[i][
-                                                  j]) + 1  # access the value from the z3 3D list and add 1 to correct for indexing and assign that to the corresponding position in the grid
+
+        booleanAnswer = [[[model.evaluate(self.variables[i][j][k]) for k in range(9)] for j in range(9)] for i in
+                         range(9)]  # extract boolean results in a 3d list
+        answer = [[0 for _ in range(9)] for _ in range(9)]  # initialize the 2d integer list
+        for i in range(9):
+            for j in range(9):
+                for k in range(9):
+                    if booleanAnswer[i][j][k]:
+                        answer[i][j] = k + 1  # convert the 3d list into integer list of only the true values
+                        break  # only one is true so we can break after finding first true for each cell
 
         return answer  # return the answer
+
+    def solve_with_precluded_solution(self, solution):
+        previous_solution_clause = []#to store the assignments from lat solution
+        for i in range(9):
+            for j in range(9):
+                k = solution[i][j] - 1
+                previous_solution_clause.append(self.variables[i][j][k])
+            # the variables that were true cannot all be true again
+        self.solver.add(Not(And(previous_solution_clause)))
+            # check for a new solution
+        if self.solver.check() == sat:
+            model = self.solver.model()
+            new_solution = self.extract_solution(model)
+            return new_solution
+        else:
+            return None
 
     def solve(self):
         """
@@ -145,17 +164,20 @@ class SudokuSolver:
 
 def main():
     print("Attempting to solve:")
-    puzzle = [
-        [5, 3, 0, 0, 7, 0, 0, 0, 0],
-        [6, 0, 0, 1, 9, 5, 0, 0, 0],
-        [0, 9, 8, 0, 0, 0, 0, 6, 0],
-        [8, 0, 0, 0, 6, 0, 0, 0, 3],
-        [4, 0, 0, 8, 0, 3, 0, 0, 1],
-        [7, 0, 0, 0, 2, 0, 0, 0, 6],
-        [0, 6, 0, 0, 0, 0, 2, 8, 0],
-        [0, 0, 0, 4, 1, 9, 0, 0, 5],
-        [0, 0, 0, 0, 8, 0, 0, 7, 9]
+    puzzle =[ #hardest sudoku puzzle (question 1)
+        [8, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 3, 6, 0, 0, 0, 0, 0],
+        [0, 7, 0, 0, 9, 0, 2, 0, 0],
+        [0, 5, 0, 0, 0, 7, 0, 0, 0],
+        [0, 0, 0, 0, 4, 5, 7, 0, 0],
+        [0, 0, 0, 1, 0, 0, 0, 3, 0],
+        [0, 0, 1, 0, 0, 0, 0, 6, 8],
+        [0, 0, 8, 5, 0, 0, 0, 1, 0],
+        [0, 9, 0, 0, 0, 0, 4, 0, 0]
+
     ]
+
+
     for row in puzzle:
         print(row)
 
@@ -166,8 +188,21 @@ def main():
         print("Solution found:")
         for row in solution:
             print(row)
+
+        newSolution = solver.solve_with_precluded_solution(solution)
+
+        if newSolution:
+             print("new solution found")
+             for row in newSolution:
+              print(row)
+
+        else:
+             print("one unique solution")
     else:
+
         print("No solution exists.")
+
+
 
 
 if __name__ == "__main__":
